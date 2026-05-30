@@ -1,0 +1,53 @@
+option domain-name "example.org";
+option domain-name-servers ns1.example.org, ns2.example.org;
+option domain-name-servers 10.10.1.5;
+option ntp-servers-option code 42 = ip-address;
+default-lease-time 600;
+max-lease-time 7200;
+
+ddns-update-style none;
+
+authoritative;
+
+subnet 10.10.1.0 netmask 255.255.255.0 {
+  # khong can ip de tranh loi  do poacker yeu cau phai co day subnet cung cap cho chinh subnet cua ubuntu
+}
+
+subnet 192.168.20.0 netmask 255.255.255.0 {
+  range 192.168.20.5 192.168.20.253;
+  option routers 192.168.20.254;
+  option subnet-mask 255.255.255.0;
+option ntp-servers 10.10.1.5;
+}
+
+# VLAN 10
+subnet 192.168.10.0 netmask 255.255.255.0 {
+  range 192.168.10.5 192.168.10.253;
+  option routers 192.168.10.254;
+  option subnet-mask 255.255.255.0;
+option ntp-servers 10.10.1.5;
+}
+
+# VLAN 30
+subnet 192.168.30.0 netmask 255.255.255.0 {
+  range 192.168.30.5 192.168.30.253;
+  option routers 192.168.30.254;
+  option subnet-mask 255.255.255.0;
+option ntp-servers 10.10.1.5;
+}
+
+# VLAN 40
+subnet 192.168.40.0 netmask 255.255.255.0 {
+  range 192.168.40.5 192.168.40.253;
+  option routers 192.168.40.254;
+  option subnet-mask 255.255.255.0;
+option ntp-servers 10.10.1.5;
+}
+
+# VLAN 50
+subnet 192.168.50.0 netmask 255.255.255.0 {
+  range 192.168.50.5 192.168.50.253;
+  option routers 192.168.50.254;
+  option subnet-mask 255.255.255.0;
+option ntp-servers 10.10.1.5;
+}

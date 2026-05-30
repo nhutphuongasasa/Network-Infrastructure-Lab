@@ -1,0 +1,159 @@
+
+:
+: Serial Number: 9APTS03BS4W
+: Hardware:   ASAv, 2048 MB RAM, CPU Xeon 5500 series 2700 MHz
+:
+ASA Version 9.18(1)
+!
+hostname ciscoasa
+enable password ***** pbkdf2
+service-module 0 keepalive-timeout 4
+service-module 0 keepalive-counter 6
+names
+no mac-address auto
+
+!
+interface GigabitEthernet0/0
+ nameif outside-1
+ security-level 0
+ ip address 10.10.10.1 255.255.255.248 standby 10.10.10.2
+!
+interface GigabitEthernet0/1
+ description STATE Failover Interface
+!
+interface GigabitEthernet0/2
+ description LAN Failover Interface
+!
+interface GigabitEthernet0/3
+ no nameif
+ security-level 100
+ no ip address
+!
+interface GigabitEthernet0/3.999
+ vlan 999
+ nameif inside
+ security-level 100
+ ip address 192.168.100.3 255.255.255.0 standby 192.168.100.4
+!
+interface GigabitEthernet0/4
+ shutdown
+ no nameif
+ no security-level
+ no ip address
+!
+interface GigabitEthernet0/5
+ nameif server-zone
+ security-level 100
+ ip address 10.10.1.1 255.255.255.0 standby 10.10.1.2
+!
+interface GigabitEthernet0/6
+ shutdown
+ no nameif
+ no security-level
+ no ip address
+!
+interface Management0/0
+ no management-only
+ shutdown
+ no nameif
+ no security-level
+ no ip address
+!
+interface Tunnel1
+ nameif VTunnelInt
+ ip address 169.254.0.1 255.255.255.0
+ tunnel source interface outside-1
+ tunnel destination 192.168.175.224
+ tunnel mode ipsec ipv4
+ tunnel protection ipsec profile IPSEC_PROP
+!
+ftp mode passive
+same-security-traffic permit inter-interface
+same-security-traffic permit intra-interface
+no object-group-search access-control
+object-group network GRP_INTERNAL
+ network-object 192.168.0.0 255.255.0.0
+object-group network GRP_SERVER
+ network-object 192.168.60.0 255.255.255.0
+access-group INSIDE-1 in interface inside
+access-group SERVER in interface server-zone
+access-list INSIDE-1 extended permit icmp 192.168.100.0 255.255.255.0 any
+access-list INSIDE-1 extended permit icmp object-group GRP_INTERNAL 10.10.1.0 255.255.255.0
+access-list INSIDE-1 extended permit udp any any eq domain
+access-list INSIDE-1 extended permit tcp any any eq domain
+access-list INSIDE-1 extended permit udp any any eq bootps
+access-list INSIDE-1 extended permit udp any any eq bootpc
+access-list INSIDE-1 extended permit udp any any eq ntp
+access-list INSIDE-1 extended permit tcp any any eq ftp-data
+access-list INSIDE-1 extended permit tcp any any eq ftp
+access-list INSIDE-1 extended permit tcp any any eq www
+access-list INSIDE-1 extended permit tcp any any eq https
+access-list INSIDE-1 extended permit ip 192.168.10.0 255.255.255.0 192.168.0.0 255.255.0.0
+access-list SERVER extended permit icmp 10.10.1.0 255.255.255.0 any
+access-list SERVER extended permit udp host 10.10.1.5 eq bootps 192.168.0.0 255.255.0.0 eq bootpc
+access-list SERVER extended permit udp host 10.10.1.5 eq bootps host 10.10.1.1 eq bootpc
+access-list SERVER extended permit udp host 10.10.1.5 eq bootps host 192.168.100.3 eq bootpc
+access-list SERVER extended permit udp host 10.10.1.5 eq bootps host 192.168.110.3 eq bootpc
+access-list SERVER extended permit udp host 10.10.1.5 any eq domain
+access-list SERVER extended permit tcp host 10.10.1.5 any eq domain
+access-list SERVER extended permit tcp 10.10.1.0 255.255.255.0 any eq www
+access-list SERVER extended permit tcp 10.10.1.0 255.255.255.0 any eq https
+pager lines 23
+mtu outside-1 1500
+mtu inside 1500
+mtu server-zone 1500
+failover
+failover lan unit secondary
+failover lan interface FOCONN GigabitEthernet0/2
+failover link STATE GigabitEthernet0/1
+failover interface ip FOCONN 172.16.1.1 255.255.255.252 standby 172.16.1.2
+failover interface ip STATE 172.16.2.1 255.255.255.252 standby 172.16.2.2
+no failover wait-disable
+monitor-interface inside
+icmp unreachable rate-limit 1 burst-size 1
+no asdm history enable
+arp timeout 14400
+no arp permit-nonconnected
+arp rate-limit 8192
+router ospf 1
+ router-id 1.1.1.1
+ network 10.10.10.0 255.255.255.0 area 0
+ network 192.168.100.0 255.255.255.0 area 0
+ log-adj-changes
+!
+route outside-1 0.0.0.0 0.0.0.0 10.10.10.5 1
+route VTunnelInt 10.10.20.0 255.255.255.0 169.254.0.2 1
+timeout xlate 3:00:00
+timeout pat-xlate 0:00:30
+timeout conn 1:00:00 half-closed 0:10:00 udp 0:02:00 sctp 0:02:00 icmp 0:00:02
+timeout sunrpc 0:10:00 h323 0:05:00 h225 1:00:00 mgcp 0:05:00 mgcp-pat 0:05:00
+timeout sip 0:30:00 sip_media 0:02:00 sip-invite 0:03:00 sip-disconnect 0:02:00
+timeout sip-provisional-media 0:02:00 uauth 0:05:00 absolute
+timeout tcp-proxy-reassembly 0:01:00
+timeout floating-conn 0:00:00
+timeout conn-holddown 0:00:15
+timeout igp stale-route 0:01:10
+user-identity default-domain LOCAL
+aaa authentication login-history
+no snmp-server location
+no snmp-server contact
+sla monitor 10
+ type echo protocol ipIcmpEcho 192.168.100.1 interface inside
+ timeout 1500
+ threshold 1000
+ frequency 5
+sla monitor schedule 10 life forever start-time now
+crypto ipsec ikev2 ipsec-proposal IPSEC_PROP
+ protocol esp encryption aes-256
+ protocol esp integrity sha-256
+crypto ipsec profile IPSEC_PROP
+ set ikev2 ipsec-proposal IPSEC_PROP
+crypto ipsec security-association pmtu-aging infinite
+crypto ca trustpoint _SmartCallHome_ServerCA
+ no validation-usage
+ crl configure
+crypto ca trustpoint _SmartCallHome_ServerCA2
+ no validation-usage
+ crl configure
+crypto ca trustpool policy
+ auto-import

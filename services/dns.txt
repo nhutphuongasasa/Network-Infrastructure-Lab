@@ -1,0 +1,69 @@
+--------------------/etc/bind/named.conf.local-----------------
+
+// Do any local configuration here
+//
+
+// Consider adding the 1918 zones here, if they are not used in your
+// organization
+//include "/etc/bind/zones.rfc1918";
+
+zone "phuong.lab" {
+    type primary;
+    file "/etc/bind/zones/db.phuong.lab"; # zone file path
+};
+
+zone "1.10.10.in-addr.arpa" {
+    type primary;
+    file "/etc/bind/zones/db.10.10.1";
+};
+
+--------------------/etc/bind/named.conf.options-----------------
+
+acl "trusted" {
+        192.168.10.0/24;
+        127.0.0.1;
+        10.10.1.5;
+        192.168.30.0/24;
+        192.168.40.0/24;
+        192.168.50.0/24;
+        192.168.20.0/24;
+};
+
+options {
+        directory "/var/cache/bind";
+
+        recursion yes;                 # enables recursive queries
+        allow-recursion { trusted; };  # allows recursive queries from "trusted" clients
+        listen-on { any; };   # ns1 private IP address - listen on private network only
+        allow-transfer { none; };      # disable zone transfers by default
+
+        forwarders {
+                1.1.1.1;
+                8.8.8.8;
+                8.8.4.4;
+        };
+
+        forward only;
+        dnssec-validation auto;
+
+        listen-on-v6 { any; };
+};
+
+--------------------/etc/bind/zones/db.phuong.lab-----------------
+
+$TTL 3600
+@ IN SOA ns1.phuong.lab. admin.phuong.lab. (
+                  1          ; Serial
+                  3600       ; Refresh
+                  900        ; Retry
+                  604800     ; Expire
+                  3600 )     ; Negative Cache TTL
+
+; Name Server
+@ IN NS ns1.phuong.lab.
+
+; A Records
+ns1     IN A 10.10.1.5
+web     IN A 10.10.1.5
+www     IN A 10.10.1.5
+

@@ -1,0 +1,91 @@
+
+redundancy
+!
+!
+track 1 ip sla 1 reachability
+ delay down 10 up 5
+!
+track 2 ip sla 2 reachability
+ delay down 10 up 5
+
+!
+!
+interface GigabitEthernet0/0
+ ip address 192.168.175.222 255.255.255.0
+ ip nat outside
+ ip virtual-reassembly in
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/1
+ ip address 192.168.1.115 255.255.255.0
+ ip nat outside
+ ip virtual-reassembly in
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/2
+ ip address 10.10.10.4 255.255.255.248
+ ip nat inside
+ ip virtual-reassembly in
+ standby 1 ip 10.10.10.5
+ standby 1 preempt
+ ip policy route-map chai-tai
+ duplex auto
+ speed auto
+ media-type rj45
+!
+interface GigabitEthernet0/3
+ no ip address
+ shutdown
+ duplex auto
+ speed auto
+ media-type rj45
+!
+router ospf 1
+ router-id 7.7.7.7
+ network 10.10.10.0 0.0.0.7 area 0
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+ip nat inside source route-map NAT_WAN1 interface GigabitEthernet0/0 overload
+ip nat inside source route-map NAT_WAN2 interface GigabitEthernet0/1 overload
+ip route 1.1.1.1 255.255.255.255 192.168.1.1
+ip route 8.8.8.8 255.255.255.255 192.168.175.2
+!
+ip access-list extended ACL_TRAFFIC_LAN
+ deny   ip 10.10.10.0 0.0.0.7 10.10.10.0 0.0.0.7
+ permit ip 10.10.10.0 0.0.0.7 any
+ permit ip 192.168.0.0 0.0.255.255 any
+ip access-list extended ACL_TRAFFIC_LAN_2
+ deny   ip 10.10.10.0 0.0.0.7 10.10.10.0 0.0.0.7
+ permit ip 192.168.0.0 0.0.255.255 any
+ permit ip 10.10.10.0 0.0.0.7 any
+!
+ip sla 1
+ icmp-echo 8.8.8.8 source-interface GigabitEthernet0/0
+ frequency 5
+ip sla schedule 1 life forever start-time now
+ip sla 2
+ icmp-echo 1.1.1.1 source-interface GigabitEthernet0/1
+ frequency 5
+ip sla schedule 2 life forever start-time now
+ipv6 ioam timestamp
+!
+route-map chai-tai permit 1
+ match ip address ACL_TRAFFIC_LAN
+ set ip next-hop verify-availability 192.168.175.2 1 track 1
+ set ip next-hop verify-availability 192.168.1.1 2 track 2
+!
+route-map NAT_WAN1 permit 10
+ match ip address ACL_TRAFFIC_LAN
+ match interface GigabitEthernet0/0
+!
+route-map NAT_WAN2 permit 10
+ match ip address ACL_TRAFFIC_LAN_2
+ match interface GigabitEthernet0/1
