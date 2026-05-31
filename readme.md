@@ -280,6 +280,21 @@ Ubuntu server đồng bộ thời gian cho toàn bộ thiết bị trong mạng.
 [Time]
 NTP=10.10.1.5
 ```
+### UFW Firewall (Ubuntu)
+
+Ubuntu server bật UFW với default policy **deny incoming** — chỉ mở đúng các port cần thiết:
+
+| Port | Protocol | Dịch vụ |
+|---|---|---|
+| 53 (Bind9) | TCP/UDP | DNS |
+| 67 | UDP | DHCP Server |
+| 80 | TCP | Web (Nginx) |
+| 123 | UDP | NTP |
+| 22 | TCP | SSH quản trị |
+
+```
+Default policy: deny incoming, allow outgoing — chỉ mở đúng port cần thiết.
+```
 
 ### Web Service (Docker + Nginx)
 
