@@ -271,6 +271,8 @@ forward only;
 
 ![Topology](screenshosts/web.png)
 
+![Topology](screenshosts/image.png)
+
 ### NTP Server
 
 Ubuntu server đồng bộ thời gian cho toàn bộ thiết bị trong mạng. Client trỏ về `10.10.1.5`:
@@ -290,7 +292,7 @@ Ubuntu server bật UFW với default policy **deny incoming** — chỉ mở đ
 | 67 | UDP | DHCP Server |
 | 80 | TCP | Web (Nginx) |
 | 123 | UDP | NTP |
-| 22 | TCP | SSH quản trị |
+| 22 | TCP | SSH |
 
 ```
 Default policy: deny incoming, allow outgoing — chỉ mở đúng port cần thiết.

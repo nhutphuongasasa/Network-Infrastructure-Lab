@@ -78,6 +78,7 @@ object-group network GRP_SERVER
 access-group INSIDE-1 in interface inside
 access-group SERVER in interface server-zone
 access-list INSIDE-1 extended permit icmp 192.168.100.0 255.255.255.0 any
+access-list INSIDE-1 extended permit icmp 192.168.0.0 255.255.0.0 any
 access-list INSIDE-1 extended permit icmp object-group GRP_INTERNAL 10.10.1.0 255.255.255.0
 access-list INSIDE-1 extended permit udp any any eq domain
 access-list INSIDE-1 extended permit tcp any any eq domain
