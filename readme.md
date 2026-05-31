@@ -331,3 +331,4 @@ location / {
 | **ASA failover không hoạt động** | Sai IP trên failover link, interface monitor đang bị shutdown | `show failover`, `show failover interface`. |
 | **Traffic không qua Firewall** | PBR route-map chưa được áp lên SVI hoặc next-hop không khả dụng | `show route-map`, `debug ip policy`. |
 | **DNS không phân giải** | Client dùng sai DNS server, service BIND9 chưa restart/cấu hình zone sai | `nslookup web.phuong.lab 10.10.1.5`, `journalctl -u bind9`. |
+| **Client không nhận IP qua DHCP relay** | ASA block gói `bootps`/`bootpc`, thiếu `same-security-traffic permit inter-interface` | Thêm rule permit `bootps`/`bootpc` trong ACL `INSIDE-1` và `SERVER`, enable `same-security-traffic` |
