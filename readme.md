@@ -36,9 +36,9 @@ Hệ thống sử dụng 5 VLAN cho các phòng ban, 1 VLAN interconnect giữa 
 
 | Thiết bị | Interface | IP Address | Vai trò |
 |---|---|---|---|
-| Router1 | Gi0/0 (WAN1) | 192.168.175.223/24 | NAT Outside, HSRP Active |
+| Router1 | Gi0/0 (WAN1) | 192.168.175.223/24 | NAT Outside |
 | Router1 | Gi0/1 (WAN2) | 192.168.1.223/24 | NAT Outside |
-| Router1 | Gi0/2 (LAN) | 10.10.10.3/29 | NAT Inside, HSRP VIP .5 |
+| Router1 | Gi0/2 (LAN) | 10.10.10.3/29 | NAT Inside, HSRP Active VIP .5 |
 | Router2 | Gi0/0 (WAN1) | 192.168.175.222/24 | NAT Outside |
 | Router2 | Gi0/1 (WAN2) | 192.168.1.115/24 | NAT Outside |
 | Router2 | Gi0/2 (LAN) | 10.10.10.4/29 | NAT Inside, HSRP Standby |
@@ -162,7 +162,7 @@ access-list INSIDE-1 extended permit tcp any any eq https
 access-list SERVER extended permit udp host 10.10.1.5 eq bootps 192.168.0.0 255.255.0.0 eq bootpc
 ```
 
-> 💡 **Ghi chú:** `same-security-traffic permit inter-interface` cho phép traffic giữa 2 interface cùng security level (inside ↔ server-zone). Không có dòng này, các VLAN sẽ không DHCP được vì gói bootps từ server-zone không qua được inside.
+> NOTE: Các rule bên dưới đang sử dụng "any" cho đích đến để tối ưu hóa thời gian triển khai và kiểm thử kết nối trong phạm vi Lab (Connectivity-first approach).
 
 
 ## Lớp Distribution – L3 Switch & Inter-VLAN Routing
@@ -208,8 +208,6 @@ route-map FORWARD_TO_FW permit 10
  set ip next-hop 192.168.100.3
 ```
 
-> 💡 **Ghi chú:** Nếu không có PBR này, traffic từ VLAN có thể đi thẳng ra Internet qua default route mà không qua Firewall – vi phạm chính sách bảo mật.
-
 ### OSPF – Định tuyến động
 
 Tất cả thiết bị L3 tham gia OSPF Area 0, tự động học route của nhau:
@@ -245,8 +243,6 @@ subnet 192.168.10.0 netmask 255.255.255.0 {
 2. Switch6 thêm Option 82 và unicast đến `10.10.1.5` (ip helper-address)
 3. Gói đi qua ASA Firewall → ASA phải có rule permit udp bootps/bootpc
 4. Server trả về DHCP Offer → Switch6 broadcast về client
-
-> ⚠️ **Lưu ý:** Lỗi thường gặp: client không nhận được IP vì ASA block gói bootps/bootpc. Kiểm tra access-list INSIDE-1 phải có `permit udp any any eq bootps` và `permit udp any any eq bootpc`.
 
 ### DNS Server (BIND9)
 
@@ -303,45 +299,14 @@ location / {
   proxy_pass http://frontend:3000;       # React frontend
 }
 ```
-
----
-
-## Troubleshooting – Các Lỗi Thường Gặp
+### Troubleshooting – Các lỗi thường gặp
 
 | Triệu chứng | Nguyên nhân hay gặp | Cách debug |
-|---|---|---|
-| Client không nhận IP | ASA block DHCP relay (bootps/bootpc) hoặc ip helper-address sai | `show access-list SERVER \| include bootps` · `ping 10.10.1.5` từ SVI |
-| OSPF neighbor không lên | Sai wildcard mask, hello/dead timer khác nhau, MTU mismatch | `show ip ospf neighbor` · `show ip ospf interface` |
-| ASA failover không hoạt động | IP failover link sai, interface monitor bị shutdown | `show failover` · `show failover interface` |
-| Traffic không qua Firewall | PBR route-map chưa áp lên SVI hoặc next-hop sai | `show route-map` · `debug ip policy` |
-| VPN tunnel không lên | Sai pre-shared key, proposal không match, routing sai | `show crypto ipsec sa` · `show crypto ikev2 sa` |
-| DNS không phân giải | Client dùng sai DNS server, BIND9 chưa restart sau khi sửa zone | `nslookup web.phuong.lab 10.10.1.5` · `journalctl -u bind9` |
-
----
-
-## What I Learned
-
-> *(Thay bằng trải nghiệm thực tế của bạn – phần này recruiter đọc kỹ nhất)*
-
-- **DHCP relay qua ASA:** Ban đầu client không nhận được IP vì thiếu rule permit bootps/bootpc trong ACL của interface server-zone. Phải thêm cả chiều server → client (offer) lẫn chiều client → server (discover).
-- **Stateful failover ASA:** Khi cấu hình sai IP trên FOCONN link, ASA không sync được state table. Debug bằng `show failover` và kiểm tra từng interface một.
-- **PBR + IP SLA kết hợp:** Dùng `verify-availability` trong route-map thay vì track thẳng vào static route, đảm bảo traffic không đi vào đường WAN đã down ngay cả khi route-map được evaluate.
-- **OSPF trên ASA:** ASA dùng subnet mask thay vì wildcard mask trong khai báo network (ngược với Cisco router). Mất khá lâu debug vì thiếu route giữa outside và inside zone.
-- **same-security-traffic:** Nếu không enable, traffic giữa inside và server-zone bị block dù cùng security level 100.
-
----
-
-## Technologies
-
-| Layer | Công nghệ sử dụng |
-|---|---|
-| WAN / Routing | Cisco IOS, OSPF Area 0, HSRP, PBR, IP SLA, NAT/PAT |
-| Firewall | Cisco ASAv 9.18, Active/Standby Failover, ACL, IPSec IKEv2 VPN |
-| Switching | 802.1Q Trunking, PVST+, HSRP trên SVI, DHCP Relay |
-| Services | Ubuntu Server, ISC-DHCP, BIND9, systemd-timesyncd (NTP) |
-| Web | Docker, Docker Compose, Nginx reverse proxy, React |
-| Security | UFW Firewall, zone-based ACL, same-security-traffic policy |
-
----
-
-*Enterprise Network Infrastructure Lab · [github.com/nhutphuongasasa/Network-Infrastructure-Lab](https://github.com/nhutphuongasasa/Network-Infrastructure-Lab)*
+| :--- | :--- | :--- |
+| **Ping không đến IP đích** | Mất kết nối Layer 2/3, sai gateway, hoặc bị chặn bởi ACL | Dùng `traceroute` kiểm tra hop, sử dụng **Wireshark** phân tích gói tin (ICMP Request/Reply) để xác định điểm rơi gói tin. |
+| **Gói tin bị Firewall Drop** | ACL thiếu rule cho phép (Implicit Deny), hoặc Interface đang ở trạng thái Down/Admin Down | `show log` (trên ASA), `show access-list` kiểm tra hit-count, kiểm tra interface bằng `show interface ip brief`. |
+| **Client không nhận IP** | ASA block DHCP relay (bootps/bootpc) hoặc cấu hình `ip helper-address` sai | `show access-list SERVER \| include bootps`, kiểm tra `ping 10.10.1.5` từ SVI. |
+| **OSPF neighbor không lên** | Sai wildcard mask, hello/dead timer khác nhau, MTU mismatch | `show ip ospf neighbor`, `show ip ospf interface`. |
+| **ASA failover không hoạt động** | Sai IP trên failover link, interface monitor đang bị shutdown | `show failover`, `show failover interface`. |
+| **Traffic không qua Firewall** | PBR route-map chưa được áp lên SVI hoặc next-hop không khả dụng | `show route-map`, `debug ip policy`. |
+| **DNS không phân giải** | Client dùng sai DNS server, service BIND9 chưa restart/cấu hình zone sai | `nslookup web.phuong.lab 10.10.1.5`, `journalctl -u bind9`. |
