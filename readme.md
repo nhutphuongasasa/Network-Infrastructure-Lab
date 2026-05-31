@@ -12,7 +12,7 @@ Lab này mô phỏng một hệ thống mạng doanh nghiệp thực tế, bao g
 
 ## Sơ Đồ Topology
 
-![Topology](screenshosts/image.png)
+![Topology](screenshosts/topology.png)
 
 ---
 
@@ -131,6 +131,7 @@ failover interface ip FOCONN 172.16.1.1 255.255.255.252 standby 172.16.1.2
 failover interface ip STATE  172.16.2.1 255.255.255.252 standby 172.16.2.2
 monitor-interface inside           ! monitor interface inside để trigger failover
 ```
+![Topology](screenshosts/firewall.png)
 
 ### Chính sách bảo mật (Access Control List)
 
@@ -244,6 +245,8 @@ subnet 192.168.10.0 netmask 255.255.255.0 {
 3. Gói đi qua ASA Firewall → ASA phải có rule permit udp bootps/bootpc
 4. Server trả về DHCP Offer → Switch6 broadcast về client
 
+![Topology](screenshosts/dhcp.png)
+
 ### DNS Server (BIND9)
 
 BIND9 giải quyết tên miền nội bộ `phuong.lab` và forward các query khác ra Internet:
@@ -264,6 +267,9 @@ acl trusted {
 forwarders { 1.1.1.1; 8.8.8.8; 8.8.4.4; };
 forward only;
 ```
+![Topology](screenshosts/dns.png)
+
+![Topology](screenshosts/web.png)
 
 ### NTP Server
 
